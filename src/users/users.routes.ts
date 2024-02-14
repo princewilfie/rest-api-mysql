@@ -1,162 +1,137 @@
-import express, {Request, Response} from "express"
-import {UnitUser, User} from "./user.interface"
-import {StatusCodes} from "http-status-codes"
-import * as database from "./user.database"
+import express, { Request, Response } from "express";
+import { UnitUser } from "./user.interface";
+import { StatusCodes } from "http-status-codes";
+import * as database from "./user.database";
 
-export const  userRouter = express.Router()
+export const userRouter = express.Router();
 
-userRouter.get("/users", async (req : Request, res : Response) => {
+userRouter.get("/users", async (req: Request, res: Response) => {
     try {
-        const allUsers : UnitUser[] = await database.findAll()
+        const allUsers: UnitUser[] = await database.findAll();
 
-        if (!allUsers){
-            return res.status(StatusCodes.NOT_FOUND).json({msg : `No users at this time..`})
-
+        if (!allUsers || allUsers.length === 0) {
+            return res.status(StatusCodes.NOT_FOUND).json({ msg: "No users found." });
         }
 
-        return res.status(StatusCodes.OK).json({total_user : allUsers.length, allUsers})
-
-    } catch (error){
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({error})
+        return res.status(StatusCodes.OK).json({ total_users: allUsers.length, users: allUsers });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
     }
-})
+});
 
-userRouter.get("/user/:id", async (req : Request, res : Response) => {
+userRouter.get("/user/:id", async (req: Request, res: Response) => {
     try {
-        const user: UnitUser = await database.findOne(req.params.id)
+        const userId = req.params.id;
+        const user: UnitUser = await database.findOne(userId);
 
-        if (!user){
-            return res.status(StatusCodes.NOT_FOUND).json({error : `User not found!`}) 
+        if (!user) {
+            return res.status(StatusCodes.NOT_FOUND).json({ error: `User with ID ${userId} not found.` });
         }
 
-        return res.status(StatusCodes.OK).json({user})
-    } catch (error){
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({error})
+        return res.status(StatusCodes.OK).json({ user });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
     }
-
-})
-
-﻿
-
+});
 
 userRouter.post("/register", async (req: Request, res: Response) => {
     try {
-    const { username, email, password } = req.body
+        const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-
-        return res.status (StatusCodes.BAD_REQUEST).json({error: `Please provide all the required parameters..`})
-
-}
-
-
-const user = await database.findByEmail(email)
-
-if (user) {
-    return res.status(StatusCodes.BAD_REQUEST).json({error: `This email has already been registered..`})
-
-}
-
-const newUser = await database.create(req.body)
-
-return res.status(StatusCodes.CREATED).json({newUser})
-
-} catch (error) {
-
-return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({error})
-
-}
-
-})
-
-userRouter.post("/login", async (req: Request, res : Response) =>  {
-
-    try {
-    const {email, password} = req.body
-    
-    if (!email || !password) {
-        return res.status (StatusCodes.BAD_REQUEST).json({error: `Please provide all the required parameters..`})
-
-    }
-    
-    const user = await database.findByEmail(email)
-    
-    if (!user) {
-        return res.status(StatusCodes.NOT_FOUND).json({error: `No user exists with the email provided..`})
-
-    }
-    
-    
-    const comparePassword = await database.comparePassword(email, password)
-    
-    if (!comparePassword) {
-        return res.status(StatusCodes.BAD_REQUEST).json({error: `Incorrect Password!`})
-
-    }
-    
-    
-    return res.status(StatusCodes.OK).json({user})
-    
-    } catch (error) {
-        return res.status (StatusCodes.INTERNAL_SERVER_ERROR).json({error})
-    }
-    
-    })
-
-
-    userRouter.put('/user/:id', async (req: Request, res: Response) => {
-
-    
-    try {
-    
-    const {username, email, password} = req.body
-    
-    const getUser = await database.findOne(req.params.id)
-    
-    if (!username || !email || !password) {
-
-        return res.status(401).json({error: `Please provide all the required parameters..`})
-
-    }
-    
-    
-    if (!getUser) {
-        return res.status(404).json({error: `No user with id ${req.params.id}`})
-
-    }
-    
-    
-    const updateUser = await database.update((req.params.id), req.body)
-    
-    return res.status(201).json({updateUser})
-    
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({error})
-    }
-    
-})
-
-
-userRouter.delete("/user/:id", async  (req : Request, res : Response) => {
-
-    try{
-        const id = (req.params.id)
-
-        const user = await database.findOne(id)
-
-        if(!user){
-            return res.status(StatusCodes.NOT_FOUND).json({error: `User does not exist`})
-
+        if (!username || !email || !password) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide username, email, and password." });
         }
 
-        await database.remove(id)
+        const existingUser = await database.findByEmail(email);
+        if (existingUser) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: "This email has already been registered." });
+        }
 
-        return res.status(StatusCodes.OK).json({msg : `User delete`})
-    } catch (error){
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json([error])
+        const newUser = await database.create(req.body);
+        return res.status(StatusCodes.CREATED).json({ newUser });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
     }
+});
+
+userRouter.post("/login", async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide email and password." });
+        }
+
+        const user = await database.findByEmail(email);
+        if (!user) {
+            return res.status(StatusCodes.NOT_FOUND).json({ error: "No user found with the provided email." });
+        }
+
+        const validPassword = await database.comparePassword(email, password);
+        if (!validPassword) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({ error: "Incorrect password." });
+        }
+
+        return res.status(StatusCodes.OK).json({ user });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+    }
+});
+
+userRouter.put('/user/:id', async (req: Request, res: Response) => {
+    try {
+        const { username, email, password } = req.body;
+        const userId = req.params.id;
+
+        if (!username || !email || !password) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide username, email, and password." });
+        }
+
+        const existingUser = await database.findOne(userId);
+        if (!existingUser) {
+            return res.status(StatusCodes.NOT_FOUND).json({ error: `User with ID ${userId} not found.` });
+        }
+
+        const updatedUser = await database.update(userId, req.body);
+        return res.status(StatusCodes.OK).json({ updatedUser });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+    }
+});
+
+userRouter.delete("/user/:id", async (req: Request, res: Response) => {
+    try {
+        const userId = req.params.id;
+        const existingUser = await database.findOne(userId);
+
+        if (!existingUser) {
+            return res.status(StatusCodes.NOT_FOUND).json({ error: `User with ID ${userId} not found.` });
+        }
+
+        await database.remove(userId);
+        return res.status(StatusCodes.OK).json({ msg: `User with ID ${userId} deleted.` });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+    }
+});
 
 
-})
-    
+userRouter.get("/users/search", async (req: Request, res: Response) => {
+    try {
+        const { name, email } = req.query;
+        if (!name && !email) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ error: "Please provide name or email for searching." });
+        }
+
+        let foundUsers: UnitUser[] = [];
+        if (name) {
+            foundUsers = await database.searchByName(name.toString());
+        } else if (email) {
+            foundUsers = await database.searchByEmail(email.toString());
+        }
+
+
+        return res.status(StatusCodes.OK).json({ total_users: foundUsers.length, users: foundUsers });
+    } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
+    }
+});
