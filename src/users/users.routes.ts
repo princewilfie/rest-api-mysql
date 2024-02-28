@@ -22,7 +22,7 @@ userRouter.get("/users", async (req: Request, res: Response) => {
 userRouter.get("/user/:id", async (req: Request, res: Response) => {
     try {
         const userId = req.params.id;
-        const user: UnitUser = await database.findOne(userId);
+        const user: UnitUser | null = await database.findOne(userId); // Corrected type
 
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({ error: `User with ID ${userId} not found.` });
@@ -47,7 +47,7 @@ userRouter.post("/register", async (req: Request, res: Response) => {
             return res.status(StatusCodes.BAD_REQUEST).json({ error: "This email has already been registered." });
         }
 
-        const newUser = await database.create(req.body);
+        const newUser = await database.create({ username, email, password }); // Corrected argument
         return res.status(StatusCodes.CREATED).json({ newUser });
     } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
@@ -91,7 +91,7 @@ userRouter.put('/user/:id', async (req: Request, res: Response) => {
             return res.status(StatusCodes.NOT_FOUND).json({ error: `User with ID ${userId} not found.` });
         }
 
-        const updatedUser = await database.update(userId, req.body);
+        const updatedUser = await database.update(userId, { username, email, password }); // Corrected argument
         return res.status(StatusCodes.OK).json({ updatedUser });
     } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
@@ -114,7 +114,6 @@ userRouter.delete("/user/:id", async (req: Request, res: Response) => {
     }
 });
 
-
 userRouter.get("/users/search", async (req: Request, res: Response) => {
     try {
         const { name, email } = req.query;
@@ -129,9 +128,10 @@ userRouter.get("/users/search", async (req: Request, res: Response) => {
             foundUsers = await database.searchByEmail(email.toString());
         }
 
-
         return res.status(StatusCodes.OK).json({ total_users: foundUsers.length, users: foundUsers });
     } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
     }
 });
+
+export default userRouter;
